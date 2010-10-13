@@ -77,12 +77,18 @@ store.s3
 	_ (.setDataInputStream s3-object (ByteArrayInputStream. (serialize clj)))]
     (.putObject s3 bucket s3-object)))
 
-(defn s3-deserialize [is eof-val]
-  (let [dis (DataInputStream. is)]
-    (try 
-     (Serializer/deserialize dis eof-val)
-  (finally 
-   (.close dis)))))
+(defn s3-deserialize
+  ([is eof-val]
+     (let [dis (DataInputStream. is)]
+       (try 
+         (Serializer/deserialize dis eof-val)
+         (finally 
+          (.close dis)))))
+  ([obj]
+     (s3-deserialize (-> obj
+                         .getDataInputStream
+                         .getWrappedInputStream)
+                     (Object.))))
 
 (defn get-clj [s3 bucket-name key]
   (let [bucket (.getBucket s3 bucket-name)
