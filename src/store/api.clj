@@ -43,6 +43,7 @@
   `(do
      (defn ~'put* [k# & args#] (apply put*- (~m k#) args#))
      (defn ~'get* [k# & args#] (apply get*- (~m k#) args#))
+     (defn ~'keys* [k# & args#] (apply keys*- (~m k#) args#))
      (defn ~'update* [k# & args#] (apply update*- (~m k#) args#))
      (defn ~'delete* [k# & args#] (apply delete*- (~m k#) args#))
      (defn ~'exists?* [k# & args#] (apply exists?*- (~m k#) args#))))
