@@ -2,6 +2,11 @@
   (:use store.s3)
   (:require [clomert :as v]))
 
+(defn try-default [v f & args]
+  (try 
+   (apply f args)
+   (catch java.lang.Exception e v)))
+
 ;;TODO: can get rid of all these and ust partially apply try-default in the data-domain fn below.
 (defn put*- [bucket s3 v k]
 (try-default nil
@@ -37,8 +42,6 @@
      (defn update* [k# & args#] (apply update*- (~m k#) args#))
      (defn delete* [k# & args#] (apply delete*- (~m k#) args#))
      (defn exists?* [k# & args#] (apply exists?*- (~m k#) args#))))
-
-(data-domain learner-data)    
 
 ;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
 ;; (defn factory [c]
