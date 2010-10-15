@@ -16,6 +16,10 @@
   (try-default nil
    get-clj s3 bucket (str k)))
 
+(defn keys*- [bucket s3]
+  (try-default nil
+   get-keys s3 bucket))
+
 (defn update*- [bucket s3 k]
   (try-default nil
    append-clj s3 bucket (str k)))
@@ -37,11 +41,11 @@
 (defmacro data-domain
   [m]
   `(do
-     (defn put* [k# & args#] (apply put*- (~m k#) args#))
-     (defn get* [k# & args#] (apply get*- (~m k#) args#))
-     (defn update* [k# & args#] (apply update*- (~m k#) args#))
-     (defn delete* [k# & args#] (apply delete*- (~m k#) args#))
-     (defn exists?* [k# & args#] (apply exists?*- (~m k#) args#))))
+     (defn ~'put* [k# & args#] (apply put*- (~m k#) args#))
+     (defn ~'get* [k# & args#] (apply get*- (~m k#) args#))
+     (defn ~'update* [k# & args#] (apply update*- (~m k#) args#))
+     (defn ~'delete* [k# & args#] (apply delete*- (~m k#) args#))
+     (defn ~'exists?* [k# & args#] (apply exists?*- (~m k#) args#))))
 
 ;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
 ;; (defn factory [c]

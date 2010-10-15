@@ -30,6 +30,10 @@ store.s3
   ([s3 bucket-root rest] 
      (.listObjects s3 (.getBucket s3 bucket-root) rest nil)))
 
+(defn get-keys [s b]
+  (map #(.getKey %)
+       (seq (objects s "learner-feed"))))
+
 (defn folder? [o]
   (or (> (.indexOf o "$folder$") 0)
       (> (.indexOf o "logs") 0)))
