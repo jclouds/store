@@ -32,7 +32,7 @@ store.s3
 
 (defn get-keys [s b]
   (map #(.getKey %)
-       (seq (objects s "learner-feed"))))
+       (seq (objects s b))))
 
 (defn folder? [o]
   (or (> (.indexOf o "$folder$") 0)

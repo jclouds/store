@@ -8,6 +8,7 @@
    (catch java.lang.Exception e v)))
 
 ;;TODO: can get rid of all these and ust partially apply try-default in the data-domain fn below.
+;;wait until generalizing with Vold.
 (defn put* [bucket s3 v k]
 (try-default nil
   put-clj s3 bucket (str k) v))
@@ -36,18 +37,22 @@
 		 s3 bucket (str k)))
    false))
 
-;;redefines with partial application for mapping keys to bucket names.
-;;example {"user" "s3-bucket-name-for-user"}
-
-(defmacro data-domain
-  [m]
-  `(do
-     (defn ~'put* [k# & args#] (apply put*- (~m k#) args#))
-     (defn ~'get* [k# & args#] (apply get*- (~m k#) args#))
-     (defn ~'keys* [k# & args#] (apply keys*- (~m k#) args#))
-     (defn ~'update* [k# & args#] (apply update*- (~m k#) args#))
-     (defn ~'delete* [k# & args#] (apply delete*- (~m k#) args#))
-     (defn ~'exists?* [k# & args#] (apply exists?*- (~m k#) args#))))
+(defn mk-store [s3 & m]
+  (let [m (or m identity)]
+  (fn [op & args]
+    (condp #(= op %)
+      :put
+      (let [[b v k] args] (put* (m b) s3 v k))
+      :keys
+      (let [[b] args] (keys* (m b) s3))
+      :get
+      (let [[b k] args] (get* (m b) s3 k))
+      :update
+      (let [[b k] args] (update* (m b) s3 k))
+      :delete
+      (let [[b k] args] (delete* (m b) s3 k))
+      :exists?
+      (let [[b k] args] (exists?* (m b) s3 k))))))
 
 ;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
 ;; (defn factory [c]
