@@ -8,27 +8,27 @@
    (catch java.lang.Exception e v)))
 
 ;;TODO: can get rid of all these and ust partially apply try-default in the data-domain fn below.
-(defn put*- [bucket s3 v k]
+(defn put* [bucket s3 v k]
 (try-default nil
   put-clj s3 bucket (str k) v))
 
-(defn get*- [bucket s3 k]
+(defn get* [bucket s3 k]
   (try-default nil
    get-clj s3 bucket (str k)))
 
-(defn keys*- [bucket s3]
+(defn keys* [bucket s3]
   (try-default nil
    get-keys s3 bucket))
 
-(defn update*- [bucket s3 k]
+(defn update* [bucket s3 k]
   (try-default nil
    append-clj s3 bucket (str k)))
 
-(defn delete*- [bucket s3 k]
+(defn delete* [bucket s3 k]
   (try-default nil
    delete-object s3 bucket (str k)))
 
-(defn exists?*- [bucket s3 k]
+(defn exists?* [bucket s3 k]
   (or
    (some #(= k (.getKey %))
 	 (try-default nil
@@ -36,7 +36,8 @@
 		 s3 bucket (str k)))
    false))
 
-;;example {:user "s3-bucket-name-for-user"}
+;;redefines with partial application for mapping keys to bucket names.
+;;example {"user" "s3-bucket-name-for-user"}
 
 (defmacro data-domain
   [m]
