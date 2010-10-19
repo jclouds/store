@@ -1,11 +1,7 @@
 (ns store.api
   (:use store.s3)
+  (:use store.core)
   (:require [clomert :as v]))
-
-(defn try-default [v f & args]
-  (try 
-   (apply f args)
-   (catch java.lang.Exception e v)))
 
 ;;TODO: can get rid of all these and ust partially apply try-default in the data-domain fn below.
 ;;wait until generalizing with Vold.
@@ -37,54 +33,58 @@
 		 s3 bucket (str k)))
    false))
 
+;;TODO: when feeling frisky, extract this to some simple syntactic sugar for these object-like closures over state and magic for calling fns that use their closed over state.
+(defn obj [s]
+  (fn [op & args]
+    (let [f (s op)]
+      (apply f args))))
+
 (defn mk-store [s3 & [m]]
   (let [m (or m identity)]
-  (fn [op & args]
-    (condp = op
-      :put
-      (let [[b v k] args] (put* (m b) s3 v k))
-      :keys
-      (let [[b] args] (keys* (m b) s3))
-      :get
-      (let [[b k] args] (get* (m b) s3 k))
-      :update
-      (let [[b k] args] (update* (m b) s3 k))
-      :delete
-      (let [[b k] args] (delete* (m b) s3 k))
-      :exists?
-      (let [[b k] args] (exists?* (m b) s3 k))))))
+    (obj {:put (fn [b v k] (put* (m b) s3 v k))
+	  :keys (fn [b] (keys* (m b) s3))
+	  :get (fn [b k] (get* (m b) s3 k))
+	  :update (fn [b k] (update* (m b) s3 k))
+	  :delete (fn [b k] (delete* (m b) s3 k))
+	  :exists? (fn [b k] (exists?* (m b) s3 k))})))
 
 ;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
-;; (defn factory [c]
-;;               (v/make-socket-store-client-factory
-;;                (v/make-client-config c)))
+(defn mk-store-cache [config]
+  (let [factory (v/make-socket-store-client-factory
+		 (v/make-client-config config))
+	m (java.util.concurrent.ConcurrentHashMap.)]
+    (fn [client]
+      (if-let [c (get m client)]
+	c
+	(let [c (v/make-store-client factory client)]
+	  (.put m client c)
+	  c)))))
+       
+(defn mk-vstore
+  [stores]
+  (obj {:put (fn [bucket k v]
+	       (v/do-store
+		(stores (str bucket))
+		(:put k v)))
+	:get (fn [bucket k]
+	       (v/versioned-value (v/do-store
+				   (stores (str bucket))
+				   (:get k))))
+	:update (fn [bucket k v]
+		  (v/store-apply-update
+		   (stores (str bucket))
+		   (fn [client]
+		     (let [ver (v/store-get client k)
+			   val (v/versioned-value ver)]
+		       (v/store-conditional-put client
+						k
+						(v/versioned-set-value! ver (append
+									     v
+									     val)))))))
+	:delete (fn [bucket k]
+		  (v/do-store
+		   (stores (str bucket))
+		   (:delete k)))}))
+;;TODO: :exists? :keys
 
-(defmacro vstore
-  [factory]
-  `(do
-     (defn put* [bucket# k# v#]
-       (v/do-store
-	(v/make-store-client factory (str bucket#))
-	(:put k# v#)))
-     (defn get* [bucket# k#]
-       (v/versioned-value (v/do-store
-			   (v/make-store-client factory (str bucket#))
-			   (:get k#))))
-     (defn update* [bucket# k# v#]
-      (v/store-apply-update
-       (v/make-store-client factory (str bucket#))
-       (fn [client]
-         (let [ver (v/store-get client k#)
-               val (v/versioned-value ver)]
-           (v/store-conditional-put client
-                                    k#
-                                    (v/versioned-set-value! ver (append 
-                                                                 v#
-                                                                 val)))))))
-     (defn delete*  [bucket# k#]
-       (v/do-store
-	(v/make-store-client factory (str bucket#))
-	(:delete k#)))
-     (defn exists?* [k# & args#] )))
-
-;;(vstore (factory  {:bootstrap-urls "tcp://localhost:6666"}))
+;;(mk-vstore (mk-store-cache {:bootstrap-urls "tcp://localhost:6666"}))
