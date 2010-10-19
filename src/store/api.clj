@@ -49,16 +49,16 @@
 	  :exists? (fn [b k] (exists?* (m b) s3 k))})))
 
 ;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
-;; (defn mk-store-cache [config]
-;;   (let [factory (v/make-socket-store-client-factory
-;; 		 (v/make-client-config config))
-;; 	m (cache-map)]
-;;     (fn [client]
-;;       (if-let [c (get m client)]
-;; 	c
-;; 	(let [c (v/make-store-client factory client)]
-;; 	  (put m client c)
-;; 	  c)))))
+(defn mk-store-cache [config]
+  (let [factory (v/make-socket-store-client-factory
+		 (v/make-client-config config))
+	m (java.util.concurrent.ConcurrentHashMap.)]
+    (fn [client]
+      (if-let [c (get m client)]
+	c
+	(let [c (v/make-store-client factory client)]
+	  (.put m client c)
+	  c)))))
        
 (defn mk-vstore
   [stores]
