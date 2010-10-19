@@ -37,10 +37,10 @@
 		 s3 bucket (str k)))
    false))
 
-(defn mk-store [s3 & m]
+(defn mk-store [s3 & [m]]
   (let [m (or m identity)]
   (fn [op & args]
-    (condp #(= op %)
+    (condp = op
       :put
       (let [[b v k] args] (put* (m b) s3 v k))
       :keys
