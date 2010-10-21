@@ -3,37 +3,6 @@
   (:use store.core)
   (:require [clomert :as v]))
 
-;;TODO: can get rid of all these and ust partially apply try-default in the data-domain fn below.
-;;wait until generalizing with Vold.
-(defn put* [bucket s3 v k]
-(try-default nil
-  put-clj s3 bucket (str k) v))
-
-(defn get* [bucket s3 k]
-  (try-default nil
-   get-clj s3 bucket (str k)))
-
-(defn keys* [bucket s3]
-  (try-default nil
-   get-keys s3 bucket))
-
-(defn update* [bucket s3 k]
-  (try-default nil
-   append-clj s3 bucket (str k)))
-
-(defn delete* [bucket s3 k]
-  (try-default nil
-   delete-object s3 bucket (str k)))
-
-(defn exists?* [bucket s3 k]
-  (or
-   (some #(= k (.getKey %))
-	 (try-default nil
-		 (comp seq objects)
-		 s3 bucket (str k)))
-   false))
-
-;;TODO: when feeling frisky, extract this to some simple syntactic sugar for these object-like closures over state and magic for calling fns that use their closed over state.
 (defn obj [s]
   (fn [op & args]
     (let [f (s op)]
@@ -41,14 +10,30 @@
 
 (defn mk-store [s3 & m]
   (let [m (or m identity)]
-    (obj {:put (fn [b v k] (put* (m b) s3 v k))
-	  :keys (fn [b] (keys* (m b) s3))
-	  :get (fn [b k] (get* (m b) s3 k))
-	  :update (fn [b k] (update* (m b) s3 k))
-	  :delete (fn [b k] (delete* (m b) s3 k))
-	  :exists? (fn [b k] (exists?* (m b) s3 k))})))
+    (obj {:put (fn [b v k]
+		 (try-default nil put-clj s3 (m b) (str k) v))
+	  :keys (fn [b]
+		  (try-default nil
+			       get-keys s3 (m b)))
 
-;;TODO: can't compose in this way becasue macro evaluates the map at macroexpand time.  change in clomert.
+	  :get (fn [b k]
+		 (try-default nil
+			      get-clj s3 (m b) (str k)))
+	  :update (fn [b k]
+		    (try-default nil
+				 append-clj s3 (m b) (str k)))
+	  :delete (fn [b k]
+		    (try-default nil
+				 delete-object s3 (m b) (str k)))
+
+	  :exists? (fn [b k]
+		     (or
+		      (some #(= k (.getKey %))
+			    (try-default nil
+					 (comp seq objects)
+					 s3 (m b) (str k)))
+		      false))})))
+
 (defn mk-store-cache [config]
   (let [factory (v/make-socket-store-client-factory
 		 (v/make-client-config config))
@@ -79,8 +64,8 @@
 		       (v/store-conditional-put client
 						k
 						(v/versioned-set-value! ver (append
-									     v
-									     val)))))))
+									     [v
+									     val])))))))
 	:delete (fn [bucket k]
 		  (v/do-store
 		   (stores (str bucket))
