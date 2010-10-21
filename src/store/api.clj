@@ -8,7 +8,7 @@
     (let [f (s op)]
       (apply f args))))
 
-(defn mk-store [s3 & m]
+(defn mk-store [s3 & [m]]
   (let [m (or m identity)]
     (obj {:put (fn [b v k]
 		 (try-default nil put-clj s3 (m b) (str k) v))
@@ -36,14 +36,14 @@
 
 (defn mk-store-cache [config]
   (let [factory (v/make-socket-store-client-factory
-		 (v/make-client-config config))
-	m (java.util.concurrent.ConcurrentHashMap.)]
+                 (v/make-client-config config))
+        m (java.util.concurrent.ConcurrentHashMap.)]
     (fn [client]
       (if-let [c (get m client)]
-	c
-	(let [c (v/make-store-client factory client)]
-	  (.put m client c)
-	  c)))))
+        c
+        (let [c (v/make-store-client factory client)]
+          (.put m client c)
+          c)))))
        
 (defn mk-vstore
   [stores]
